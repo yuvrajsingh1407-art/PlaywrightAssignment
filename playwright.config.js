@@ -19,12 +19,14 @@ export default defineConfig
     projects: [
       {
         name: 'chromium',
-        use: { ...devices['Desktop Chrome'] },
+        use: {
+          viewport: null,
+          launchOptions: {
+            args: ["--start-maximized"]
+          }
+        }
       },
-      {
-        name: 'firefox',
-        use: { ...devices['Desktop Firefox'] },
-      },
+
     ],
 
 
