@@ -7,7 +7,7 @@ import EventHubHelper from "../utlis/navigation";
 
 test("Event Hub", async ({ page }) => {
     const eventHubHelper = new EventHubHelper(page)
-    await eventHubHelper.openLoginPage();
+    await eventHubHelper.goToLoginPage();
     await expect(page).toHaveTitle(/EventHub/i);
     await expect(page.getByPlaceholder("you@email.com")).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
