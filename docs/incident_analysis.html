@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incident Analysis: Flaky "Book Now" Click in SPA</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface2: #334155;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #818cf8;
+            --accent2: #a78bfa;
+            --green: #34d399;
+            --red: #f87171;
+            --yellow: #fbbf24;
+            --blue: #60a5fa;
+            --border: #475569;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            padding: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 2rem 0 1rem;
+            color: #fff;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 0.5rem;
+        }
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 2.5rem 0 1rem;
+            color: var(--accent2);
+        }
+        h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--blue);
+        }
+        p { margin: 0.75rem 0; }
+        a { color: var(--accent); }
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 2rem 0;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--surface);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.88rem;
+            color: var(--accent);
+        }
+        pre {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-size: 0.88rem;
+            line-height: 1.6;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+            color: var(--text);
+        }
+        .line-add { color: var(--green); }
+        .line-del { color: var(--red); text-decoration: line-through; opacity: 0.8; }
+        .line-ctx { color: var(--text-muted); }
+
+        .callout {
+            border-left: 4px solid;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+            border-radius: 0 8px 8px 0;
+            background: var(--surface);
+        }
+        .callout-important { border-color: var(--accent); }
+        .callout-tip { border-color: var(--green); }
+        .callout-warning { border-color: var(--yellow); }
+        .callout-label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.4rem;
+        }
+        .callout-important .callout-label { color: var(--accent); }
+        .callout-tip .callout-label { color: var(--green); }
+        .callout-warning .callout-label { color: var(--yellow); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+        th {
+            background: var(--surface2);
+            padding: 0.65rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--accent2);
+            border-bottom: 2px solid var(--border);
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        tr:hover td { background: var(--surface); }
+
+        .mermaid {
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.25rem 0;
+            text-align: center;
+        }
+
+        ul, ol { padding-left: 1.5rem; margin: 0.75rem 0; }
+        li { margin: 0.3rem 0; }
+
+        .toc {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .toc a { text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .toc ul { list-style: none; padding-left: 1rem; }
+        .toc > ul { padding-left: 0; }
+        .toc li { margin: 0.3rem 0; }
+
+        .emoji { font-style: normal; }
+
+        @media print {
+            body { background: #fff; color: #1a1a1a; }
+            pre, .callout, .mermaid, .toc { break-inside: avoid; }
+            .mermaid { background: #f8f9fa; }
+            pre { background: #f8f9fa; border-color: #ddd; }
+            code { background: #f0f0f0; color: #6366f1; }
+            th { background: #e2e8f0; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>🐛 Incident Analysis: Flaky "Book Now" Click in SPA</h1>
+
+<div class="toc">
+    <strong>Table of Contents</strong>
+    <ul>
+        <li><a href="#what">What Was Happening</a></li>
+        <li><a href="#architecture">Understanding the App Architecture</a></li>
+        <li><a href="#bugs">The Three Bugs</a>
+            <ul>
+                <li><a href="#bug1">Bug #1: <code>force: true</code> on Click</a></li>
+                <li><a href="#bug2">Bug #2: <code>waitForURL</code> Hanging on SPA</a></li>
+                <li><a href="#bug3">Bug #3: No Wait After Page Navigation</a></li>
+            </ul>
+        </li>
+        <li><a href="#fix">The Fix: <code>toPass()</code> Retry Pattern</a></li>
+        <li><a href="#concepts">Key Playwright Concepts Learned</a></li>
+        <li><a href="#changes">Code Changes Summary</a></li>
+        <li><a href="#reference">Quick Reference</a></li>
+    </ul>
+</div>
+
+<hr>
+
+<h2 id="what">What Was Happening</h2>
+
+<p>The test <code>Book multiple events to build history</code> was <strong>flaky</strong> — it would sometimes pass and sometimes fail with this error:</p>
+
+<pre><code>Error: expect(locator).toBeVisible() failed
+Locator: locator('#customerName')
+Expected: visible
+Timeout: 5000ms</code></pre>
+
+<p>The test clicks the <strong>"Book Now"</strong> link on an event card, expecting to navigate to the Event Details page where a <code>#customerName</code> input field should appear. But sometimes the page <strong>never navigated</strong> — it stayed on the Events list page, and <code>#customerName</code> was never found.</p>
+
+<div class="callout callout-important">
+    <div class="callout-label">⚠️ Important</div>
+    <p>The key clue was: <strong>"it passes when I click manually, but fails in automation."</strong> This is the classic symptom of a <strong>race condition</strong> — automation is faster than humans, so it hits timing windows that manual testing doesn't.</p>
+</div>
+
+<hr>
+
+<h2 id="architecture">Understanding the App Architecture</h2>
+
+<p>EventHub is a <strong>React Single Page Application (SPA)</strong>. This is critical to understand because SPAs work differently from traditional websites:</p>
+
+<h3>Traditional Website (Multi-Page App)</h3>
+<pre><code>Click link → Browser sends request to server → Server returns new HTML page → Browser renders it</code></pre>
+<ul>
+    <li>Each page is a full HTTP request/response</li>
+    <li>The browser fires a <code>load</code> event after each navigation</li>
+    <li>Playwright's <code>waitForURL</code> works perfectly here</li>
+</ul>
+
+<h3>SPA (Single Page App) — What EventHub Uses</h3>
+<pre><code>Click link → JavaScript intercepts click → React Router updates URL via history.pushState()
+                                           → React re-renders components (no server request)</code></pre>
+<ul>
+    <li>The page <strong>never fully reloads</strong> — JavaScript swaps out components</li>
+    <li>No <code>load</code> event fires on navigation</li>
+    <li>The URL changes via <code>history.pushState()</code>, not via a real HTTP navigation</li>
+    <li><strong>React Router</strong> handles all navigation client-side</li>
+</ul>
+
+<h3>What is React Router's <code>&lt;Link&gt;</code> Component?</h3>
+
+<p>The "Book Now" element in the HTML looks like a normal link:</p>
+<pre><code>&lt;a href="/events/1"&gt;Book Now&lt;/a&gt;</code></pre>
+
+<p>But it's actually rendered by React Router's <code>&lt;Link&gt;</code> component, which:</p>
+<ol>
+    <li>Renders as a normal <code>&lt;a&gt;</code> tag (so it looks like a link)</li>
+    <li>Attaches a JavaScript <code>onClick</code> handler that calls <code>event.preventDefault()</code> (stops the browser from doing a normal navigation)</li>
+    <li>Instead, uses <code>navigate('/events/1')</code> to do a client-side route change</li>
+</ol>
+
+<p><strong>This means: if the <code>onClick</code> handler isn't attached yet, clicking the link does NOTHING.</strong></p>
+
+<hr>
+
+<h2 id="bugs">The Three Bugs</h2>
+
+<h2 id="bug1">Bug #1: <code>force: true</code> on Click</h2>
+
+<h3>The Original Code</h3>
+<pre><code><span class="line-del">// ❌ FLAKY — in EventHubHelper.js</span>
+await eventCardPage.getEventCardDetails(targetEventCard).bookNowEvent.click({ force: true });</code></pre>
+
+<h3>What <code>force: true</code> Does</h3>
+
+<p>When you call <code>.click()</code> in Playwright, it performs <strong>actionability checks</strong> before clicking:</p>
+
+<div class="mermaid">
+flowchart TD
+    A["locator.click()"] --> B{"Is element visible?"}
+    B -->|No| W1["⏳ Wait..."]
+    W1 --> B
+    B -->|Yes| C{"Is element stable?\n(not animating)"}
+    C -->|No| W2["⏳ Wait..."]
+    W2 --> C
+    C -->|Yes| D{"Is element enabled?"}
+    D -->|No| W3["⏳ Wait..."]
+    W3 --> D
+    D -->|Yes| E{"No overlay blocking it?"}
+    E -->|No| W4["⏳ Wait..."]
+    W4 --> E
+    E -->|Yes| F["✅ Click!"]
+    style F fill:#22c55e
+</div>
+
+<p>When you add <code>{ force: true }</code>, it <strong>skips ALL of these checks</strong>:</p>
+
+<div class="mermaid">
+flowchart TD
+    A["locator.click({ force: true })"] --> F["⚡ Click immediately!"]
+    style F fill:#ef4444
+</div>
+
+<h3>Why This Caused Flakiness</h3>
+
+<p>With <code>force: true</code>, Playwright clicks the "Book Now" link <strong>immediately</strong> — even if:</p>
+<ul>
+    <li>The element is still animating into position</li>
+    <li>React is still re-rendering the card after filter changes</li>
+    <li>React Router's <code>onClick</code> handler hasn't been attached yet</li>
+</ul>
+
+<p><strong>Result:</strong> The click fires, but since React's handler isn't ready, the click does nothing. No navigation happens. The page stays on the Events list.</p>
+
+<div class="callout callout-tip">
+    <div class="callout-label">💡 Tip</div>
+    <p><strong>Playwright Best Practice:</strong> Never use <code>force: true</code> unless you're testing a specific edge case (like clicking a visually hidden element on purpose). Playwright's auto-waiting is one of its best features — don't bypass it!</p>
+</div>
+
+<hr>
+
+<h2 id="bug2">Bug #2: <code>waitForURL</code> Hanging on SPA Navigation</h2>
+
+<h3>The Original Code</h3>
+<pre><code><span class="line-del">// ❌ HANGS — in EventHubHelper.js</span>
+await this.page.waitForURL(/events\/.+/);</code></pre>
+
+<h3>How <code>waitForURL</code> Works</h3>
+<p><code>page.waitForURL(urlPattern)</code> does two things:</p>
+<ol>
+    <li>Waits for the page URL to match the pattern</li>
+    <li>Waits for the page to reach the <strong><code>load</code></strong> state (this is the default <code>waitUntil</code> option)</li>
+</ol>
+
+<h3>Why It Hangs on SPAs</h3>
+
+<p>In a SPA, when React Router navigates from <code>/events?city=Hyderabad</code> to <code>/events/1</code>:</p>
+
+<table>
+    <thead>
+        <tr><th>Step</th><th>Traditional Site</th><th>SPA (React Router)</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>URL changes</td><td>✅ Yes</td><td>✅ Yes (via <code>pushState</code>)</td></tr>
+        <tr><td>HTTP request</td><td>✅ Yes</td><td>❌ No</td></tr>
+        <tr><td><code>load</code> event fires</td><td>✅ Yes</td><td>❌ <strong>No!</strong></td></tr>
+    </tbody>
+</table>
+
+<p>Since no <code>load</code> event fires, <code>waitForURL</code> waits forever → <strong>test timeout!</strong></p>
+
+<hr>
+
+<h2 id="bug3">Bug #3: No Wait After Page Navigation</h2>
+
+<h3>The Original Code</h3>
+<pre><code><span class="line-del">// ❌ NO WAIT — in EventCardPage.js</span>
+async navigateToEventsPage() {
+    await this.eventsPageLocator.click();
+    // Returns immediately! Page might not be loaded yet.
+}</code></pre>
+
+<h3>Why This Matters</h3>
+
+<p>The test runs bookings in a loop. After the first successful booking, the page is on the booking confirmation view. Then <code>navigateToEventsPage()</code> clicks the Events nav link, but returns <em>before the page has loaded</em>:</p>
+
+<div class="mermaid">
+sequenceDiagram
+    participant Test
+    participant EvPage as "Events Page"
+    participant DetPage as "Event Details"
+    participant ConfPage as "Confirmation"
+
+    Note over Test: Booking 1 - World Tech Summit
+    Test->>EvPage: navigateToEventsPage
+    EvPage-->>Test: Page loads fast, first visit
+    Test->>EvPage: Apply filters
+    Test->>EvPage: Click Book Now
+    EvPage->>DetPage: Navigate
+    Test->>DetPage: Fill form and Confirm
+    DetPage->>ConfPage: Show confirmation
+
+    Note over Test: Booking 2 - Dilli Diwali Mela
+    Test->>EvPage: navigateToEventsPage
+    Note right of EvPage: Page still loading!
+    Test->>EvPage: Apply filters too early!
+    Test->>EvPage: Click Book Now
+    Note right of EvPage: React not ready, click does nothing
+</div>
+
+<h3>The Fix</h3>
+<pre><code><span class="line-add">// ✅ FIXED — in EventCardPage.js</span>
+async navigateToEventsPage() {
+    await this.eventsPageLocator.click();
+    <span class="line-add">await expect(this.headingLocator).toBeVisible(); // Wait for "Upcoming Events" heading</span>
+}</code></pre>
+
+<div class="callout callout-tip">
+    <div class="callout-label">💡 Tip</div>
+    <p><strong>Playwright Best Practice:</strong> After any navigation action, always wait for a meaningful element on the destination page before proceeding. Don't just click and hope — <strong>assert</strong> the page loaded.</p>
+</div>
+
+<hr>
+
+<h2 id="fix">The Fix: <code>toPass()</code> Retry Pattern</h2>
+
+<h3>What is <code>toPass()</code>?</h3>
+
+<p><code>expect(...).toPass()</code> is Playwright's built-in retry mechanism. It re-runs a block of code until it succeeds or times out:</p>
+
+<div class="mermaid">
+flowchart TD
+    A["toPass() starts"] --> B["Run the code block"]
+    B --> C{"Did it succeed?"}
+    C -->|Yes| D["✅ Continue test"]
+    C -->|No| E{"Timeout reached?"}
+    E -->|No| F["⏳ Wait briefly"] --> B
+    E -->|Yes| G["❌ Fail test"]
+    style D fill:#22c55e
+    style G fill:#ef4444
+</div>
+
+<h3>How We Used It</h3>
+
+<pre><code><span class="line-add">// ✅ FIXED — in EventHubHelper.js</span>
+await expect(async () => {
+    await bookNowLink.click();      // Try clicking
+    await expect(eventDetailsPage.customerNameLocator)
+        .toBeVisible({ timeout: 3000 });  // Check if we navigated
+}).toPass({ timeout: 15000 });            // Retry for up to 15 seconds</code></pre>
+
+<h3>What happens step by step:</h3>
+
+<table>
+    <thead>
+        <tr><th>Attempt</th><th>Click</th><th>Navigation?</th><th>Result</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>1st</td><td>Clicks "Book Now"</td><td>❌ React handler not ready</td><td>Retries...</td></tr>
+        <tr><td>2nd</td><td>Clicks "Book Now"</td><td>❌ Still not ready</td><td>Retries...</td></tr>
+        <tr><td>3rd</td><td>Clicks "Book Now"</td><td>✅ Handler attached, navigates!</td><td><code>#customerName</code> visible → <strong>Success!</strong></td></tr>
+    </tbody>
+</table>
+
+<h3>Why This Works</h3>
+<ul>
+    <li><strong>Attempt 1-2:</strong> React is still attaching event handlers after the filter re-render. The click fires but nothing happens. <code>toBeVisible()</code> fails after 3 seconds (inner timeout).</li>
+    <li><strong>Attempt 3:</strong> React has finished rendering. The click triggers React Router's navigation. The page changes to Event Details, <code>#customerName</code> appears.</li>
+    <li>The outer <code>toPass({ timeout: 15000 })</code> keeps retrying the entire block.</li>
+</ul>
+
+<div class="callout callout-tip">
+    <div class="callout-label">💡 Tip</div>
+    <p><strong>Playwright Best Practice:</strong> <code>toPass()</code> is the idiomatic way to handle flaky interactions in Playwright. It's better than:</p>
+    <ul>
+        <li><code>page.waitForTimeout(3000)</code> — arbitrary sleep, slows tests</li>
+        <li><code>force: true</code> — bypasses safety checks</li>
+        <li><code>try/catch</code> with manual retry — reinventing the wheel</li>
+    </ul>
+</div>
+
+<hr>
+
+<h2 id="concepts">Key Playwright Concepts Learned</h2>
+
+<h3>1. Actionability Checks</h3>
+<p>Playwright automatically waits for elements to be <strong>visible, stable, enabled, and unobstructed</strong> before interacting. Don't bypass this with <code>force: true</code>.</p>
+
+<h3>2. SPA vs Traditional Navigation</h3>
+<p>In SPAs, navigation happens via JavaScript (<code>history.pushState</code>), not HTTP requests. This means:</p>
+<ul>
+    <li>No <code>load</code> event fires</li>
+    <li><code>waitForURL</code> with default options may hang</li>
+    <li>Always wait for <strong>destination page elements</strong>, not URL changes</li>
+</ul>
+
+<h3>3. The Rendering Gap</h3>
+<p>In React/Vue/Angular apps, there's a gap between when an element <strong>appears in the DOM</strong> and when its <strong>event handlers are attached</strong>. Playwright sees the element as "visible" but it's not yet interactive.</p>
+
+<pre><code>DOM renders &lt;a&gt; tag  →  Element visible  →  React attaches onClick  →  Element interactive
+        ↑                     ↑                      ↑
+   Playwright sees it    toBeVisible() passes    Click actually works</code></pre>
+
+<h3>4. <code>toPass()</code> for Unreliable Interactions</h3>
+<p>Use <code>toPass()</code> whenever an interaction might not work on the first try due to timing:</p>
+<pre><code>await expect(async () => {
+    await element.click();
+    await expect(result).toBeVisible({ timeout: 2000 });
+}).toPass({ timeout: 10000 });</code></pre>
+
+<h3>5. Always Wait After Navigation</h3>
+<p>After clicking a navigation link, <strong>always wait for a landmark element</strong> on the destination page:</p>
+<pre><code>await navLink.click();
+await expect(page.getByText('Page Title')).toBeVisible(); // ✅ Confirm page loaded</code></pre>
+
+<hr>
+
+<h2 id="changes">Code Changes Summary</h2>
+
+<h3>File 1: EventHubHelper.js</h3>
+
+<pre><code>  await expect(bookNowLink).toBeVisible();
+
+<span class="line-del">- // OLD CODE (flaky):</span>
+<span class="line-del">- await eventCardPage.getEventCardDetails(targetEventCard).bookNowEvent.click({ force: true });</span>
+<span class="line-del">- await this.page.waitForURL(/events\/.+/);</span>
+<span class="line-del">- await expect(eventDetailsPage.customerNameLocator).toBeVisible();</span>
+
+<span class="line-add">+ // NEW CODE (stable):</span>
+<span class="line-add">+ await expect(async () => {</span>
+<span class="line-add">+     await bookNowLink.click();</span>
+<span class="line-add">+     await expect(eventDetailsPage.customerNameLocator).toBeVisible({ timeout: 3000 });</span>
+<span class="line-add">+ }).toPass({ timeout: 15000 });</span></code></pre>
+
+<p><strong>What changed:</strong></p>
+<ul>
+    <li>❌ Removed <code>force: true</code> — let Playwright auto-wait</li>
+    <li>❌ Removed <code>waitForURL</code> — doesn't work with SPA pushState</li>
+    <li>✅ Added <code>toPass()</code> retry — handles the rendering gap</li>
+    <li>✅ Used stored <code>bookNowLink</code> variable — cleaner, avoids re-querying</li>
+</ul>
+
+<h3>File 2: EventCardPage.js</h3>
+
+<pre><code><span class="line-add">+ import { expect } from "@playwright/test";</span>
+
+  async navigateToEventsPage() {
+      await this.eventsPageLocator.click();
+<span class="line-add">+     await expect(this.headingLocator).toBeVisible();</span>
+  }</code></pre>
+
+<p><strong>What changed:</strong></p>
+<ul>
+    <li>✅ Added wait for "Upcoming Events" heading after navigation</li>
+    <li>✅ Ensures the events page is fully loaded before any filter operations</li>
+</ul>
+
+<hr>
+
+<h2 id="reference">Quick Reference: When to Use What</h2>
+
+<table>
+    <thead>
+        <tr><th>Scenario</th><th>❌ Don't Use</th><th>✅ Use Instead</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>SPA link click doesn't navigate</td><td><code>force: true</code></td><td><code>toPass()</code> retry</td></tr>
+        <tr><td>Wait for SPA page change</td><td><code>waitForURL()</code></td><td><code>expect(element).toBeVisible()</code></td></tr>
+        <tr><td>After clicking nav link</td><td>Nothing (hope it loaded)</td><td><code>expect(heading).toBeVisible()</code></td></tr>
+        <tr><td>Element exists but not interactive</td><td><code>waitForTimeout(3000)</code></td><td><code>toPass()</code> with inner timeout</td></tr>
+        <tr><td>Flaky test that "sometimes passes"</td><td>Run it again and pray 🙏</td><td>Investigate the <strong>race condition</strong></td></tr>
+    </tbody>
+</table>
+
+<hr>
+<p style="text-align: center; color: var(--text-muted); margin-top: 2rem; font-size: 0.85rem;">
+    Generated on July 8, 2026 — Playwright SPA Testing Incident Analysis
+</p>
+
+<script>
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        themeVariables: {
+            primaryColor: '#818cf8',
+            primaryTextColor: '#e2e8f0',
+            primaryBorderColor: '#475569',
+            lineColor: '#60a5fa',
+            secondaryColor: '#334155',
+            tertiaryColor: '#1e293b',
+            fontFamily: 'Inter, sans-serif'
+        }
+    });
+</script>
+
+</body>
+</html>

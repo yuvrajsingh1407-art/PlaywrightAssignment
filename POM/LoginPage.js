@@ -4,7 +4,7 @@ import { expect } from '@playwright/test';
  * Shared helper function to open the EventHub login page
  * @param {import('@playwright/test').Page} page 
  */
-export default class EventHubHelper {
+export default class LoginPage {
     constructor(page) {
         this.page = page;
         //login locators
@@ -19,9 +19,9 @@ export default class EventHubHelper {
         await this.page.goto("/");
 
     }
-    async login(TestUserData) {
-        await this.emailInput.fill(TestUserData.email);
-        await this.passwordInput.fill(TestUserData.password);
+    async login(loginData) {
+        await this.emailInput.fill(loginData.email);
+        await this.passwordInput.fill(loginData.password);
         await this.loginButton.click();
     }
 

@@ -1,0 +1,32 @@
+{
+  "TestUserLoginData": {
+    "email": "domidi1455@heavty.com",
+    "password": "Eventhub@123"
+  },
+  "bookings": [
+    {
+      "searchText": "World",
+      "expectedFullTitle": "World Tech Summit",
+      "category": "Conference",
+      "city": "Hyderabad",
+      "quantity": 1,
+      "customerDetails": {
+        "name": "Tester1",
+        "email": "tester1@gmail.com",
+        "phone": "1234567890"
+      }
+    },
+    {
+      "searchText": "Dilli",
+      "expectedFullTitle": "Dilli Diwali Mela",
+      "category": "Festival",
+      "city": "Delhi",
+      "quantity": 2,
+      "customerDetails": {
+        "name": "Tester2",
+        "email": "tester2@gmail.com",
+        "phone": "9876543210"
+      }
+    }
+  ]
+}

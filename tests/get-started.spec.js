@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import EventHubHelper from "../utlis/navigation";
+import EventHubHelper from "../POM/LoginPage";
 
 test('EventHub', async ({ page }) => {
     const eventHubHelper = new EventHubHelper(page)

@@ -3,7 +3,7 @@
 // **Browser Context:** is a separate browser session container that can create its own pages.
 // A fresh browser context starts with **isolated state**.
 import { test, expect } from "@playwright/test";
-import EventHubHelper from "../utlis/navigation";
+import EventHubHelper from "../POM/LoginPage";
 
 test("Event Hub", async ({ page }) => {
     const eventHubHelper = new EventHubHelper(page)

@@ -1,25 +1,19 @@
 import { test, expect } from '@playwright/test';
-import EventHubHelper from "../utlis/navigation";
-import EventCardsPage from '../utlis/EventCardsPage';
-const TestUserData = {
-    email: "domidi1455@heavty.com",
-    password: "Eventhub@123",
-}
+import POManager from "../POM/POManager";
+import EventHubHelper from "../utlis/EventHubHelper";
 
-const eventsTestData = {
-    searchKey: 'World',
-    category: 'Conference',
-    city: 'Hyderabad'
-};
+const dataSet = JSON.parse(JSON.stringify(require('../utlis/eventHubTestData.json')));
+
 let eventTitleText;
 let eventPriceText;
 let eventSeatText;
 test.beforeEach(async ({ page }) => {
-    const eventHubHelper = new EventHubHelper(page);
-    await eventHubHelper.goToLoginPage();
+    const poManager = new POManager(page);
+    const loginPage = poManager.getLoginPage();
+    await loginPage.goToLoginPage();
     //Login
-    await eventHubHelper.login(TestUserData);
-    await expect(eventHubHelper.browseEvents).toBeVisible();
+    await loginPage.login(dataSet.TestUserLoginData);
+    await expect(loginPage.browseEvents).toBeVisible();
 
 })
 
@@ -28,15 +22,18 @@ test("Test1", async ({ page }) => {
 
 
     //events page
-    const eventCardPage = new EventCardsPage(page);
+    const poManager = new POManager(page);
+    const eventCardPage = poManager.getEventCardPage();
+    const evetDetailsPage = poManager.getEventDetailsPage();
+    // const eventHubHelper = poManager.getEventHubHelper();
     await eventCardPage.navigateToEventsPage();
     await expect(eventCardPage.headingLocator).toBeVisible();
     // Filtering Using DD
-    await eventCardPage.getFilteredEventCards(eventsTestData)
-    await expect(eventCardPage.eventCardsLocator.first()).toBeVisible();
-    await expect(eventCardPage.eventCardsLocator).not.toHaveCount(0);
+    await eventCardPage.getFilteredEventCards(dataSet.bookings[0])
+    await expect(eventCardPage.allEventsCardLocator.first()).toBeVisible();
+    await expect(eventCardPage.allEventsCardLocator).not.toHaveCount(0);
     //Filtered Card
-    const targetCard = eventCardPage.eventCardsLocator.filter({ hasText: 'World Tech Summit' });
+    const targetCard = eventCardPage.allEventsCardLocator.filter({ hasText: 'World Tech Summit' });
     await expect(targetCard).toHaveCount(1);
     await expect(targetCard).toBeVisible();
     eventTitleText = await eventCardPage.getEventCardDetails(targetCard).eventTitle.textContent();
@@ -44,18 +41,19 @@ test("Test1", async ({ page }) => {
     eventSeatText = await eventCardPage.getEventCardDetails(targetCard).eventSeatText.textContent();
     expect(eventTitleText).toContain('World Tech Summit');
     expect(eventPriceText).toContain('$');
-    const extractedDigit = eventCardPage.parseSeatCount(eventSeatText)
+    const extractedDigit = EventHubHelper.parseStringTextToInt(eventSeatText);
     expect(extractedDigit).toBeGreaterThan(0);
     await eventCardPage.getEventCardDetails(targetCard).bookNowEvent.click();
     //Event Details Page
     await expect(page).toHaveURL(/events/);
-    await expect(eventCardPage.eventDetailsPageEventTitleLocator).toHaveText(eventTitleText);
-    await expect(eventCardPage.eventDetailsPageTicketPriceLocator).toHaveText(eventPriceText);
+    await expect(evetDetailsPage.eventTitleLocator).toHaveText(eventTitleText);
+    await expect(evetDetailsPage.eventTicketPriceLocator).toHaveText(eventPriceText);
     await page.goto('/events');
 
 });
 test('Test2', async ({ page }) => {
-    const eventCardPage = new EventCardsPage(page);
+    const poManager = new POManager(page);
+    const eventCardPage = poManager.getEventCardPage();
     await page.goto("/events");
 
     // Clear the search field
@@ -67,12 +65,12 @@ test('Test2', async ({ page }) => {
     // Reset city to All Cities
     await eventCardPage.categoryDropdownLocator.nth(1).selectOption('All Cities');
 
-    await expect(eventCardPage.eventCardsLocator.nth(2)).toBeVisible();
-    const cardsCount = await eventCardPage.eventCardsLocator.count();
+    await expect(eventCardPage.allEventsCardLocator.nth(2)).toBeVisible();
+    const cardsCount = await eventCardPage.allEventsCardLocator.count();
     expect(cardsCount).toBeGreaterThan(2);
-    const firstEventHeading = await eventCardPage.getEventCardDetails(eventCardPage.eventCardsLocator.first()).eventTitle.textContent();
-    const secondEventHeading = await eventCardPage.getEventCardDetails(eventCardPage.eventCardsLocator.nth(1)).eventTitle.textContent();
-    const lastEventHeading = await eventCardPage.getEventCardDetails(eventCardPage.eventCardsLocator.last()).eventTitle.textContent();
+    const firstEventHeading = await eventCardPage.getEventCardDetails(eventCardPage.allEventsCardLocator.first()).eventTitle.textContent();
+    const secondEventHeading = await eventCardPage.getEventCardDetails(eventCardPage.allEventsCardLocator.nth(1)).eventTitle.textContent();
+    const lastEventHeading = await eventCardPage.getEventCardDetails(eventCardPage.allEventsCardLocator.last()).eventTitle.textContent();
     expect(firstEventHeading.trim().length).toBeGreaterThan(0);
     expect(secondEventHeading.trim().length).toBeGreaterThan(0);
     expect(lastEventHeading.trim().length).toBeGreaterThan(0);
