@@ -69,7 +69,7 @@ test('Test2', async ({ page }) => {
         await expect(refCardDetails.refTotalText).toHaveText(bookingInfo.totalText)
     }
 
-    //Step 3 & 4
+    //Step 3 & 4 using loop
     for (const card of myBookingsRefrenceCard) {
         const bookingRef = await myBookingsPage.getRefCardAllDetailsLocator(card).refNumtext.textContent();
         const matchedBooking = completedBookings.find(b => b.bookingRef === bookingRef);
